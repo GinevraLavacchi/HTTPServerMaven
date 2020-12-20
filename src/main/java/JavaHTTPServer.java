@@ -128,24 +128,6 @@ public class JavaHTTPServer implements Runnable{
 				File file = new File(WEB_ROOT, fileRequested);
 				int fileLength = (int) file.length();
 				String content = getContentType(fileRequested);
-				if (fileRequested.contains("puntiVendita.json")) {
-                	
-                                    String jsonString = null;
-
-                                    try {
-                                            jsonString = readFileAsString("resources/puntiVendita.json");
-                                    } catch (Exception e) {
-                                            e.printStackTrace();
-                                    }
-
-                                    List<PuntoVendita> listPuntiVendita = objectMapper.readValue(jsonString, new TypeReference<List<PuntoVendita>>(){});
-                                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                                    xmlMapper.writeValue(byteArrayOutputStream, listPuntiVendita);
-
-                                    file = new File("puntiVendita.xml");
-                                    fileLength = (int) file.length();
-                                    content = "text/xml";
-                                }
 				if (method.equals("GET")) { // GET method so we return content
 					byte[] fileData = readFileData(file, fileLength);
 					
@@ -239,6 +221,10 @@ public class JavaHTTPServer implements Runnable{
                     dataOut.write(fileData, 0, fileLength);
                     dataOut.flush();
                 }
+                else if(fileRequested.endsWith("/punti-vendita.xml"))
+                {
+                    deser(out, dataOut, fileRequested);
+                }
                 else{
                     file = new File(WEB_ROOT, FILE_NOT_FOUND);
                     int fileLength = (int) file.length();
@@ -266,9 +252,21 @@ public class JavaHTTPServer implements Runnable{
         {
            
             ObjectMapper objectMapper = new ObjectMapper();
+            PuntoVendita p=objectMapper.readValue(new File("../puntiVendita.json"),PuntoVendita.class);
+            xmlMapper mapp=new xmlMapper();
+            File fxml=new File("../puntiVendita.json");
+            File file=new File(WEB_ROOT, FILE_301);
+            int fileLenght =(int)file.length();
+            String content="application/xml";
+            String sxml= mapp.writeValueAsString(p);
+            
+            out.println("HTTP/1.1 301 Moved Permanently");
+            out.println("Server: Java HTTP Server from SSaurel : 1.0");
+            out.println("Date: " + new Date());
+            out.println("Content-type: " + content);
+            out.println("Content-length: " + sxml.length());
+            out.println("Location: "+fileRequested);
+            out.println(); // blank line between headers and content, very important !
+            out.flush(); // flush character output stream buffer
         }
-        public static String readFileAsString(String file)throws Exception
-    {
-        return new String(Files.readAllBytes(Paths.get(file)));
-    }
 }
