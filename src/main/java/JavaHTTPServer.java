@@ -22,6 +22,10 @@ import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 // The tutorial can be found just here on the SSaurel's Blog : 
 // https://www.ssaurel.com/blog/create-a-simple-http-web-server-in-java
 // Each Client Connection will be managed in a dedicated Thread
@@ -121,12 +125,27 @@ public class JavaHTTPServer implements Runnable{
 				
 			} else {
 				// GET or HEAD method
+                            
 				if (fileRequested.endsWith("/")) {
-                                    if(fileRequested.equals("index.html"))
-					fileRequested += DEFAULT_FILE;
-				}
-				File file = new File(WEB_ROOT, fileRequested);
-				int fileLength = (int) file.length();
+                                    if(fileRequested.equals("index.html")){
+					fileRequested += DEFAULT_FILE;}
+                                    else if(fileRequested.equals("/db/xml")||fileRequested.equals("/db/json"))
+                                    {
+                                        Elenco el=retriveElenco();
+                                    
+                                    /*if(fileRequested.endsWith("xml")){
+                                        file=classToXML(el);
+                                        fileRequested+="elenco.xml";
+                                    }
+                                    else{
+                                        file=classToJSON(el);
+                                        fileRequested+="elenco.json";
+                                    }*/
+                                    }
+				
+                                    File file = new File(WEB_ROOT, fileRequested);
+                                
+                                int fileLength = (int) file.length();
 				String content = getContentType(fileRequested);
 				if (method.equals("GET")) { // GET method so we return content
 					byte[] fileData = readFileData(file, fileLength);
@@ -149,6 +168,7 @@ public class JavaHTTPServer implements Runnable{
 				}
 				
 			}
+                    }
 			
 		} catch (FileNotFoundException fnfe) {
 			try {
@@ -159,7 +179,11 @@ public class JavaHTTPServer implements Runnable{
 			
 		} catch (IOException ioe) {
 			System.err.println("Server error : " + ioe);
-		} finally {
+		} catch (ClassNotFoundException ex) {
+                Logger.getLogger(JavaHTTPServer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (SQLException ex) {
+                Logger.getLogger(JavaHTTPServer.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
 			try {
 				in.close();
 				out.close();
@@ -223,7 +247,7 @@ public class JavaHTTPServer implements Runnable{
                 }
                 else if(fileRequested.endsWith("/punti-vendita.xml"))
                 {
-                    deser(out, dataOut, fileRequested);
+                    classToXML(out, dataOut, fileRequested);
                 }
                 else{
                     file = new File(WEB_ROOT, FILE_NOT_FOUND);
@@ -248,7 +272,7 @@ public class JavaHTTPServer implements Runnable{
 			System.out.println("File " + fileRequested + " not found");
 		}
 	}
-        private void deser(PrintWriter out, OutputStream dataOut, String fileRequested) throws IOException 
+        private void classToXML(PrintWriter out, OutputStream dataOut, String fileRequested) throws IOException 
         {
            
             ObjectMapper objectMapper = new ObjectMapper();
@@ -269,4 +293,12 @@ public class JavaHTTPServer implements Runnable{
             out.println(); // blank line between headers and content, very important !
             out.flush(); // flush character output stream buffer
         }
+        private Elenco retriveElenco() throws ClassNotFoundException, SQLException{
+        ArrayList<Persona> nomi=new ArrayList<>();
+        ResultSet res=new Db().eseguiQuery();
+        while (res.next()) {
+            nomi.add(new Persona(res.getString(1), res.getString(2)));
+        }
+        return new Elenco(nomi);
+    }
 }
